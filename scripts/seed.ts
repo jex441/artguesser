@@ -175,6 +175,92 @@ const ARTISTS: Array<{
 const TARGET_PER_ARTIST = 20
 const SKIP_THRESHOLD = 15
 
+// ---- AIC (Art Institute of Chicago) ----
+const AIC_HEADERS = { 'AIC-User-Agent': 'Artle/1.0 (art guessing game)' }
+
+async function fetchAICArtistId(name: string): Promise<number | null> {
+  const url = new URL('https://api.artic.edu/api/v1/agents/search')
+  url.searchParams.set('q', name)
+  url.searchParams.set('fields', 'id,title')
+  url.searchParams.set('limit', '5')
+  const res = await fetch(url.toString(), { headers: AIC_HEADERS })
+  if (!res.ok) return null
+  const agents: { id: number; title: string }[] = (await res.json()).data ?? []
+  const exact = agents.find((a) => a.title?.toLowerCase() === name.toLowerCase())
+  return exact?.id ?? agents[0]?.id ?? null
+}
+
+async function fetchAICPaintingsByArtistId(artistId: number, page = 1): Promise<any[]> {
+  const url = new URL('https://api.artic.edu/api/v1/artworks/search')
+  url.searchParams.set('fields', 'id,title,artist_display,date_start,medium_display,dimensions,image_id,description,classification_titles')
+  url.searchParams.set('limit', '25')
+  url.searchParams.set('page', String(page))
+  url.searchParams.set('query[term][artist_id]', String(artistId))
+  const res = await fetch(url.toString(), { headers: AIC_HEADERS })
+  if (!res.ok) return []
+  return (await res.json()).data ?? []
+}
+
+function isAICPainting(item: any): boolean {
+  return (item.classification_titles ?? []).some((c: string) => c.toLowerCase() === 'painting')
+}
+
+function aicImageUrl(imageId: string): string {
+  return `https://www.artic.edu/iiif/2/${imageId}/full/843,/0/default.jpg`
+}
+
+async function seedPaintingsFromAIC(artist: { id: number; name: string }, needed: number): Promise<number> {
+  console.log(`  [AIC] Looking up artist...`)
+  const aicId = await fetchAICArtistId(artist.name)
+  if (!aicId) {
+    console.log(`  [AIC] No agent found, skipping.`)
+    return 0
+  }
+  console.log(`  [AIC] Agent id=${aicId}, fetching paintings...`)
+
+  let count = 0
+  for (let page = 1; page <= 4 && count < needed; page++) {
+    const items = await fetchAICPaintingsByArtistId(aicId, page)
+    if (items.length === 0) break
+
+    for (const item of items) {
+      if (count >= needed) break
+      if (!item.image_id || !isAICPainting(item)) continue
+
+      const existing = await prisma.artwork.findFirst({
+        where: { source: 'aic', sourceId: String(item.id) },
+      })
+      if (existing) continue
+
+      try {
+        await prisma.artwork.create({
+          data: {
+            title: item.title ?? 'Untitled',
+            artistId: artist.id,
+            artistName: artist.name,
+            artistNameBasic: normalizeArtistName(artist.name),
+            imageUrl: aicImageUrl(item.image_id),
+            year: item.date_start ?? null,
+            medium: item.medium_display ?? null,
+            dimensions: item.dimensions ?? null,
+            description: item.description ? item.description.replace(/<[^>]*>/g, '').slice(0, 500) : null,
+            museum: 'Art Institute of Chicago',
+            source: 'aic',
+            sourceId: String(item.id),
+          },
+        })
+        count++
+      } catch {
+        // skip duplicate
+      }
+    }
+    await new Promise((r) => setTimeout(r, 300))
+  }
+
+  console.log(`  [AIC] Added ${count} paintings`)
+  return count
+}
+
 // ---- Met Museum ----
 async function fetchWithRetry(url: string, retries = 4, baseDelay = 2000): Promise<Response | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -312,9 +398,13 @@ async function seedPaintingsFromMet(
 }
 
 async function main() {
-  console.log('Starting seed...')
+  const batchArg = process.argv.find((a) => a.startsWith('--batch='))
+  const batchSize = batchArg ? parseInt(batchArg.split('=')[1]) : null
+  const artists = batchSize ? ARTISTS.slice(0, batchSize) : ARTISTS
 
-  for (const artistData of ARTISTS) {
+  console.log(`Starting seed... (${artists.length} artists${batchSize ? ' — test batch' : ''})`)
+
+  for (const artistData of artists) {
     console.log(`\nProcessing: ${artistData.name}`)
     const artist = await seedArtist(artistData)
 
@@ -325,10 +415,16 @@ async function main() {
     }
 
     const needed = TARGET_PER_ARTIST - existing
-    await seedPaintingsFromMet(
-      { ...artist, nationality: artist.nationality ?? undefined },
-      needed,
-    )
+
+    // Try AIC first, top up with Met
+    const aicAdded = await seedPaintingsFromAIC(artist, needed)
+    const stillNeeded = needed - aicAdded
+    if (stillNeeded > 0) {
+      await seedPaintingsFromMet(
+        { ...artist, nationality: artist.nationality ?? undefined },
+        stillNeeded,
+      )
+    }
 
     await new Promise((r) => setTimeout(r, 300))
   }
