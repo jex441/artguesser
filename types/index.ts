@@ -26,6 +26,8 @@ export interface Artwork {
 
 export interface QuizArtwork extends Artwork {
   choices?: string[] // easy mode: 4 artist name options
+  nationality?: string | null
+  birthYear?: number | null
 }
 
 export interface QuizState {
@@ -40,4 +42,5 @@ export interface AnswerResult {
   artwork: QuizArtwork
   guess: string
   correct: boolean
+  hinted?: boolean
 }

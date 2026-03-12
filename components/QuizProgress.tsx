@@ -25,6 +25,8 @@ export default function QuizProgress({ current, total, answers }: Props) {
                   ? i === current - 1
                     ? 'bg-stone-300'
                     : 'bg-stone-100'
+                  : answer.correct && answer.hinted
+                  ? 'bg-amber-400'
                   : answer.correct
                   ? 'bg-green-400'
                   : 'bg-red-400'

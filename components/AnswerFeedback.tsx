@@ -12,17 +12,23 @@ export default function AnswerFeedback({ answer, onNext }: Props) {
     <div className="animate-slide-up space-y-6">
       <div
         className={`rounded-sm px-6 py-5 text-center border transition-all ${
-          answer.correct
+          answer.correct && answer.hinted
+            ? 'bg-amber-50 border-amber-200'
+            : answer.correct
             ? 'bg-green-50 border-green-200'
             : 'bg-red-50 border-red-200'
         }`}
       >
         <p
           className={`text-xs tracking-[0.25em] uppercase mb-2 ${
-            answer.correct ? 'text-green-600' : 'text-red-500'
+            answer.correct && answer.hinted
+              ? 'text-amber-600'
+              : answer.correct
+              ? 'text-green-600'
+              : 'text-red-500'
           }`}
         >
-          {answer.correct ? 'Correct' : 'Incorrect'}
+          {answer.correct && answer.hinted ? 'Correct (with hint)' : answer.correct ? 'Correct' : 'Incorrect'}
         </p>
         <p className="font-serif text-xl text-stone-800">
           {answer.artwork.artistName}

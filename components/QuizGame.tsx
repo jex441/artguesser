@@ -55,14 +55,14 @@ export default function QuizGame({ mode }: Props) {
     fetchQuiz()
   }, [fetchQuiz])
 
-  const handleGuess = useCallback((guess: string) => {
+  const handleGuess = useCallback((guess: string, hinted = false) => {
     if (!state) return
     const current = state.artworks[state.currentIndex]
     const correct =
       current.artistNameBasic === guess.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() ||
       current.artistName.toLowerCase() === guess.toLowerCase().trim()
 
-    const result: AnswerResult = { artwork: current, guess, correct }
+    const result: AnswerResult = { artwork: current, guess, correct, hinted: hinted && correct }
     setState((prev) =>
       prev ? { ...prev, answers: [...prev.answers, result], phase: 'feedback' } : prev
     )
@@ -71,7 +71,7 @@ export default function QuizGame({ mode }: Props) {
   const handlePass = useCallback(() => {
     if (!state) return
     const current = state.artworks[state.currentIndex]
-    const result: AnswerResult = { artwork: current, guess: '', correct: false }
+    const result: AnswerResult = { artwork: current, guess: '', correct: false, hinted: false }
     setState((prev) =>
       prev ? { ...prev, answers: [...prev.answers, result], phase: 'feedback' } : prev
     )
@@ -137,7 +137,7 @@ export default function QuizGame({ mode }: Props) {
           {mode === 'easy' ? (
             <EasyMode artwork={currentArtwork} onGuess={handleGuess} />
           ) : (
-            <HardMode onGuess={handleGuess} onPass={handlePass} />
+            <HardMode artwork={currentArtwork} onGuess={handleGuess} onPass={handlePass} />
           )}
         </div>
       )}
