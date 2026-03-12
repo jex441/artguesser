@@ -103,6 +103,73 @@ const ARTISTS: Array<{
   { name: 'Winslow Homer', nationality: 'American', birthYear: 1836, deathYear: 1910, difficulty: 2 },
   { name: 'John Singer Sargent', nationality: 'American', birthYear: 1856, deathYear: 1925, difficulty: 2 },
   { name: 'Childe Hassam', nationality: 'American', birthYear: 1859, deathYear: 1935, difficulty: 3 },
+
+  // Italian Renaissance
+  { name: 'Raphael', nationality: 'Italian', birthYear: 1483, deathYear: 1520, difficulty: 2 },
+  { name: 'Titian', nationality: 'Italian', birthYear: 1488, deathYear: 1576, difficulty: 2 },
+  { name: 'Tintoretto', nationality: 'Italian', birthYear: 1518, deathYear: 1594, difficulty: 3 },
+  { name: 'Paolo Veronese', nationality: 'Italian', birthYear: 1528, deathYear: 1588, difficulty: 3 },
+  { name: 'Correggio', nationality: 'Italian', birthYear: 1489, deathYear: 1534, difficulty: 3 },
+  { name: 'Bronzino', nationality: 'Italian', birthYear: 1503, deathYear: 1572, difficulty: 3 },
+  { name: 'Botticelli', nationality: 'Italian', birthYear: 1445, deathYear: 1510, difficulty: 2 },
+  { name: 'Fra Angelico', nationality: 'Italian', birthYear: 1395, deathYear: 1455, difficulty: 3 },
+  { name: 'Giovanni Bellini', nationality: 'Italian', birthYear: 1430, deathYear: 1516, difficulty: 3 },
+  { name: 'Andrea Mantegna', nationality: 'Italian', birthYear: 1431, deathYear: 1506, difficulty: 3 },
+  { name: 'Lorenzo Lotto', nationality: 'Italian', birthYear: 1480, deathYear: 1557, difficulty: 4 },
+  { name: 'Artemisia Gentileschi', nationality: 'Italian', birthYear: 1593, deathYear: 1656, difficulty: 3 },
+  { name: 'Giovanni Battista Tiepolo', nationality: 'Italian', birthYear: 1696, deathYear: 1770, difficulty: 3 },
+  { name: 'Canaletto', nationality: 'Italian', birthYear: 1697, deathYear: 1768, difficulty: 3 },
+
+  // Spanish
+  { name: 'Diego Velázquez', nationality: 'Spanish', birthYear: 1599, deathYear: 1660, difficulty: 2 },
+  { name: 'El Greco', nationality: 'Greek-Spanish', birthYear: 1541, deathYear: 1614, difficulty: 2 },
+  { name: 'Bartolomé Esteban Murillo', nationality: 'Spanish', birthYear: 1617, deathYear: 1682, difficulty: 3 },
+  { name: 'Jusepe de Ribera', nationality: 'Spanish', birthYear: 1591, deathYear: 1652, difficulty: 4 },
+
+  // French Old Masters
+  { name: 'Nicolas Poussin', nationality: 'French', birthYear: 1594, deathYear: 1665, difficulty: 3 },
+  { name: 'Claude Lorrain', nationality: 'French', birthYear: 1600, deathYear: 1682, difficulty: 3 },
+  { name: 'Antoine Watteau', nationality: 'French', birthYear: 1684, deathYear: 1721, difficulty: 3 },
+  { name: 'Jean-Honoré Fragonard', nationality: 'French', birthYear: 1732, deathYear: 1806, difficulty: 3 },
+  { name: 'François Boucher', nationality: 'French', birthYear: 1703, deathYear: 1770, difficulty: 3 },
+  { name: 'Jacques-Louis David', nationality: 'French', birthYear: 1748, deathYear: 1825, difficulty: 3 },
+  { name: 'Jean-Baptiste-Siméon Chardin', nationality: 'French', birthYear: 1699, deathYear: 1779, difficulty: 3 },
+  { name: 'Élisabeth Vigée Le Brun', nationality: 'French', birthYear: 1755, deathYear: 1842, difficulty: 3 },
+  { name: 'Gustave Courbet', nationality: 'French', birthYear: 1819, deathYear: 1877, difficulty: 3 },
+  { name: 'Henri de Toulouse-Lautrec', nationality: 'French', birthYear: 1864, deathYear: 1901, difficulty: 3 },
+
+  // British
+  { name: 'Thomas Gainsborough', nationality: 'British', birthYear: 1727, deathYear: 1788, difficulty: 3 },
+  { name: 'Joshua Reynolds', nationality: 'British', birthYear: 1723, deathYear: 1792, difficulty: 3 },
+  { name: 'J.M.W. Turner', nationality: 'British', birthYear: 1775, deathYear: 1851, difficulty: 2 },
+  { name: 'John Constable', nationality: 'British', birthYear: 1776, deathYear: 1837, difficulty: 2 },
+  { name: 'William Hogarth', nationality: 'British', birthYear: 1697, deathYear: 1764, difficulty: 3 },
+  { name: 'George Romney', nationality: 'British', birthYear: 1734, deathYear: 1802, difficulty: 4 },
+
+  // German/Northern European
+  { name: 'Albrecht Dürer', nationality: 'German', birthYear: 1471, deathYear: 1528, difficulty: 2 },
+  { name: 'Lucas Cranach the Elder', nationality: 'German', birthYear: 1472, deathYear: 1553, difficulty: 3 },
+  { name: 'Hans Holbein the Younger', nationality: 'German', birthYear: 1497, deathYear: 1543, difficulty: 3 },
+
+  // More Dutch Golden Age
+  { name: 'Frans Hals', nationality: 'Dutch', birthYear: 1582, deathYear: 1666, difficulty: 2 },
+  { name: 'Pieter de Hooch', nationality: 'Dutch', birthYear: 1629, deathYear: 1684, difficulty: 3 },
+  { name: 'Jacob van Ruisdael', nationality: 'Dutch', birthYear: 1628, deathYear: 1682, difficulty: 3 },
+  { name: 'Gabriel Metsu', nationality: 'Dutch', birthYear: 1629, deathYear: 1667, difficulty: 4 },
+  { name: 'Gerrit Dou', nationality: 'Dutch', birthYear: 1613, deathYear: 1675, difficulty: 4 },
+  { name: 'Pieter Claesz', nationality: 'Dutch', birthYear: 1597, deathYear: 1660, difficulty: 4 },
+  { name: 'Willem Claesz. Heda', nationality: 'Dutch', birthYear: 1594, deathYear: 1680, difficulty: 4 },
+  { name: 'Jan Davidsz. de Heem', nationality: 'Dutch', birthYear: 1606, deathYear: 1684, difficulty: 4 },
+
+  // American Landscape & Genre (Hudson River / Luminism)
+  { name: 'Frederic Edwin Church', nationality: 'American', birthYear: 1826, deathYear: 1900, difficulty: 3 },
+  { name: 'Albert Bierstadt', nationality: 'American', birthYear: 1830, deathYear: 1902, difficulty: 3 },
+  { name: 'Thomas Cole', nationality: 'American', birthYear: 1801, deathYear: 1848, difficulty: 3 },
+  { name: 'Asher B. Durand', nationality: 'American', birthYear: 1796, deathYear: 1886, difficulty: 4 },
+  { name: 'Martin Johnson Heade', nationality: 'American', birthYear: 1819, deathYear: 1904, difficulty: 4 },
+  { name: 'George Inness', nationality: 'American', birthYear: 1825, deathYear: 1894, difficulty: 4 },
+  { name: 'William Sidney Mount', nationality: 'American', birthYear: 1807, deathYear: 1868, difficulty: 4 },
+  { name: 'George Caleb Bingham', nationality: 'American', birthYear: 1811, deathYear: 1879, difficulty: 4 },
 ]
 
 const TARGET_PER_ARTIST = 20
@@ -124,8 +191,32 @@ async function fetchWithRetry(url: string, retries = 4, baseDelay = 2000): Promi
   return null
 }
 
-async function fetchMetArtworksByArtist(artistName: string, limit = 60): Promise<number[]> {
-  const url = `https://collectionapi.metmuseum.org/public/collection/v1/search?artistOrCulture=true&hasImages=true&isPublicDomain=true&q=${encodeURIComponent(artistName)}`
+// Met department IDs for paintings — narrows search results so we fetch far
+// fewer individual object pages (the main cause of rate limiting).
+// 11 = European Paintings, 21 = Modern Art, 1 = American Paintings & Sculpture
+function paintingDepartmentId(nationality: string | undefined): number | null {
+  if (!nationality) return null
+  const n = nationality.toLowerCase()
+  if (n.includes('american')) return 1
+  if (
+    n.includes('french') || n.includes('dutch') || n.includes('flemish') ||
+    n.includes('italian') || n.includes('spanish') || n.includes('german') ||
+    n.includes('british') || n.includes('austrian') || n.includes('belgian') ||
+    n.includes('norwegian') || n.includes('russian') || n.includes('belarusian') ||
+    n.includes('greek') || n.includes('swiss') || n.includes('mexican')
+  ) return 11
+  return null
+}
+
+async function fetchMetArtworksByArtist(
+  artistName: string,
+  nationality: string | undefined,
+  limit = 40,
+): Promise<number[]> {
+  const deptId = paintingDepartmentId(nationality)
+  const base = `https://collectionapi.metmuseum.org/public/collection/v1/search?artistOrCulture=true&hasImages=true&isPublicDomain=true`
+  const dept = deptId != null ? `&departmentId=${deptId}` : ''
+  const url = `${base}${dept}&q=${encodeURIComponent(artistName)}`
   const res = await fetchWithRetry(url)
   if (!res) return []
   const data = await res.json()
@@ -171,11 +262,11 @@ async function seedArtist(artistData: typeof ARTISTS[number]) {
 }
 
 async function seedPaintingsFromMet(
-  artist: { id: number; name: string },
+  artist: { id: number; name: string; nationality?: string },
   needed: number,
 ): Promise<number> {
   console.log(`  [Met] Fetching paintings for ${artist.name}...`)
-  const objectIds = await fetchMetArtworksByArtist(artist.name, 80)
+  const objectIds = await fetchMetArtworksByArtist(artist.name, artist.nationality)
   let count = 0
 
   for (const objectId of objectIds) {
@@ -221,13 +312,7 @@ async function seedPaintingsFromMet(
 }
 
 async function main() {
-  const reseed = process.argv.includes('--reseed')
-  console.log(`Starting seed...${reseed ? ' (--reseed)' : ''}`)
-
-  if (reseed) {
-    const deleted = await prisma.artwork.deleteMany({})
-    console.log(`Cleared ${deleted.count} artworks from DB.`)
-  }
+  console.log('Starting seed...')
 
   for (const artistData of ARTISTS) {
     console.log(`\nProcessing: ${artistData.name}`)
@@ -240,7 +325,10 @@ async function main() {
     }
 
     const needed = TARGET_PER_ARTIST - existing
-    await seedPaintingsFromMet(artist, needed)
+    await seedPaintingsFromMet(
+      { ...artist, nationality: artist.nationality ?? undefined },
+      needed,
+    )
 
     await new Promise((r) => setTimeout(r, 300))
   }
