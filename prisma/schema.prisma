@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Artist {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  nameBasic   String // lowercase, no accents, for search matching
+  bio         String?
+  nationality String?
+  birthYear   Int?
+  deathYear   Int?
+  difficulty  Int       @default(2) // 1=most famous, 4=most obscure
+  artworks    Artwork[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([nameBasic])
+}
+
+model Artwork {
+  id              Int      @id @default(autoincrement())
+  title           String
+  artistId        Int
+  artist          Artist   @relation(fields: [artistId], references: [id])
+  artistName      String // denormalized for quick access
+  artistNameBasic String // normalized: lowercase, no accents
+  imageUrl        String
+  year            Int?
+  medium          String?
+  dimensions      String?
+  description     String?
+  museum          String?
+  sourceId        String? // external API ID
+  source          String? // "aic", "met", etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([artistId])
+  @@index([source, sourceId])
+}
