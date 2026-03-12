@@ -53,7 +53,6 @@ const ARTISTS: Array<{
   { name: 'Francisco Goya', nationality: 'Spanish', birthYear: 1746, deathYear: 1828, difficulty: 3 },
   { name: 'Eugène Delacroix', nationality: 'French', birthYear: 1798, deathYear: 1863, difficulty: 3 },
   { name: 'Caravaggio', nationality: 'Italian', birthYear: 1571, deathYear: 1610, difficulty: 3 },
-  { name: 'Jan Vermeer', nationality: 'Dutch', birthYear: 1632, deathYear: 1675, difficulty: 3 },
   { name: 'Paul Klee', nationality: 'Swiss-German', birthYear: 1879, deathYear: 1940, difficulty: 3 },
   { name: 'Piet Mondrian', nationality: 'Dutch', birthYear: 1872, deathYear: 1944, difficulty: 3 },
   { name: 'Joan Miró', nationality: 'Spanish', birthYear: 1893, deathYear: 1983, difficulty: 3 },
@@ -74,14 +73,39 @@ const ARTISTS: Array<{
   { name: 'Balthus', nationality: 'French', birthYear: 1908, deathYear: 2001, difficulty: 4 },
 ]
 
+const TARGET_PER_ARTIST = 20
+const SKIP_THRESHOLD = 15
+
 // ---- AIC (Art Institute of Chicago) ----
-async function fetchAICPage(artistName: string, page = 1): Promise<any[]> {
-  const url = new URL('https://api.artic.edu/api/v1/artworks/search')
+
+// Look up the AIC internal artist ID so we can filter artworks precisely by artist,
+// avoiding the full-text search misattribution problem.
+async function fetchAICArtistId(artistName: string): Promise<number | null> {
+  const url = new URL('https://api.artic.edu/api/v1/agents/search')
   url.searchParams.set('q', artistName)
-  url.searchParams.set('fields', 'id,title,artist_display,date_display,date_start,medium_display,dimensions,image_id,description,place_of_origin,department_title')
-  url.searchParams.set('limit', '10')
+  url.searchParams.set('fields', 'id,title')
+  url.searchParams.set('limit', '5')
+
+  const res = await fetch(url.toString(), {
+    headers: { 'AIC-User-Agent': 'Artle/1.0 (art guessing game)' },
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  const agents: any[] = data.data ?? []
+
+  // Pick the agent whose name most closely matches (case-insensitive exact first)
+  const normalized = artistName.toLowerCase()
+  const exact = agents.find((a) => a.title?.toLowerCase() === normalized)
+  return exact?.id ?? agents[0]?.id ?? null
+}
+
+async function fetchAICPageByArtistId(artistId: number, page = 1, perPage = 25): Promise<any[]> {
+  const url = new URL('https://api.artic.edu/api/v1/artworks/search')
+  url.searchParams.set('fields', 'id,title,artist_display,date_start,medium_display,dimensions,image_id,description,classification_titles')
+  url.searchParams.set('limit', String(perPage))
   url.searchParams.set('page', String(page))
-  url.searchParams.set('query[term][has_not_been_viewed_much]', 'false')
+  // Filter strictly to this artist's ID — no full-text bleed
+  url.searchParams.set('query[term][artist_id]', String(artistId))
 
   const res = await fetch(url.toString(), {
     headers: { 'AIC-User-Agent': 'Artle/1.0 (art guessing game)' },
@@ -91,17 +115,22 @@ async function fetchAICPage(artistName: string, page = 1): Promise<any[]> {
   return data.data ?? []
 }
 
+function isPainting(item: any): boolean {
+  const classifications: string[] = item.classification_titles ?? []
+  return classifications.some((c: string) => c.toLowerCase() === 'painting')
+}
+
 function aicImageUrl(imageId: string): string {
   return `https://www.artic.edu/iiif/2/${imageId}/full/843,/0/default.jpg`
 }
 
 // ---- Met Museum ----
-async function fetchMetArtworksByArtist(artistName: string): Promise<number[]> {
+async function fetchMetArtworksByArtist(artistName: string, limit = 60): Promise<number[]> {
   const url = `https://collectionapi.metmuseum.org/public/collection/v1/search?artistOrCulture=true&hasImages=true&q=${encodeURIComponent(artistName)}`
   const res = await fetch(url)
   if (!res.ok) return []
   const data = await res.json()
-  return (data.objectIDs ?? []).slice(0, 10)
+  return (data.objectIDs ?? []).slice(0, limit)
 }
 
 async function fetchMetObject(objectId: number): Promise<any> {
@@ -109,6 +138,16 @@ async function fetchMetObject(objectId: number): Promise<any> {
   const res = await fetch(url)
   if (!res.ok) return null
   return res.json()
+}
+
+// Verify the Met object's artist matches who we expect (handles misattributions from broad search)
+function metArtistMatches(obj: any, artistName: string): boolean {
+  const display: string = obj.artistDisplayName ?? ''
+  if (!display) return false
+  const normalized = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  return normalized(display).includes(normalized(artistName)) ||
+    normalized(artistName).includes(normalized(display))
 }
 
 async function seedArtist(artistData: typeof ARTISTS[number]) {
@@ -132,51 +171,79 @@ async function seedArtist(artistData: typeof ARTISTS[number]) {
   return artist
 }
 
-async function seedArtworksFromAIC(artist: { id: number; name: string; artistName?: string }) {
-  console.log(`  Fetching AIC artworks for ${artist.name}...`)
-  const items = await fetchAICPage(artist.name)
+async function seedPaintingsFromAIC(
+  artist: { id: number; name: string },
+  needed: number,
+): Promise<number> {
+  console.log(`  [AIC] Fetching paintings for ${artist.name}...`)
+
+  const aicArtistId = await fetchAICArtistId(artist.name)
+  if (!aicArtistId) {
+    console.log(`  [AIC] No AIC artist record found for ${artist.name}, skipping.`)
+    return 0
+  }
+  console.log(`  [AIC] Found AIC artist id=${aicArtistId}`)
+
   let count = 0
+  const maxPages = 4
 
-  for (const item of items) {
-    if (!item.image_id) continue
-    const existing = await prisma.artwork.findFirst({
-      where: { source: 'aic', sourceId: String(item.id) },
-    })
-    if (existing) continue
+  for (let page = 1; page <= maxPages && count < needed; page++) {
+    const items = await fetchAICPageByArtistId(aicArtistId, page, 25)
+    if (items.length === 0) break
 
-    try {
-      await prisma.artwork.create({
-        data: {
-          title: item.title ?? 'Untitled',
-          artistId: artist.id,
-          artistName: artist.name,
-          artistNameBasic: normalizeArtistName(artist.name),
-          imageUrl: aicImageUrl(item.image_id),
-          year: item.date_start ?? null,
-          medium: item.medium_display ?? null,
-          dimensions: item.dimensions ?? null,
-          description: item.description ? item.description.replace(/<[^>]*>/g, '').slice(0, 500) : null,
-          museum: 'Art Institute of Chicago',
-          source: 'aic',
-          sourceId: String(item.id),
-        },
+    for (const item of items) {
+      if (count >= needed) break
+      if (!item.image_id) continue
+      if (!isPainting(item)) continue
+
+      const existing = await prisma.artwork.findFirst({
+        where: { source: 'aic', sourceId: String(item.id) },
       })
-      count++
-    } catch (e) {
-      // skip duplicate or error
+      if (existing) continue
+
+      try {
+        await prisma.artwork.create({
+          data: {
+            title: item.title ?? 'Untitled',
+            artistId: artist.id,
+            artistName: artist.name,
+            artistNameBasic: normalizeArtistName(artist.name),
+            imageUrl: aicImageUrl(item.image_id),
+            year: item.date_start ?? null,
+            medium: item.medium_display ?? null,
+            dimensions: item.dimensions ?? null,
+            description: item.description
+              ? item.description.replace(/<[^>]*>/g, '').slice(0, 500)
+              : null,
+            museum: 'Art Institute of Chicago',
+            source: 'aic',
+            sourceId: String(item.id),
+          },
+        })
+        count++
+      } catch {
+        // skip duplicate or error
+      }
     }
+
+    await new Promise((r) => setTimeout(r, 200))
   }
 
-  console.log(`  Added ${count} AIC artworks for ${artist.name}`)
+  console.log(`  [AIC] Added ${count} paintings for ${artist.name}`)
   return count
 }
 
-async function seedArtworksFromMet(artist: { id: number; name: string }) {
-  console.log(`  Fetching Met artworks for ${artist.name}...`)
-  const objectIds = await fetchMetArtworksByArtist(artist.name)
+async function seedPaintingsFromMet(
+  artist: { id: number; name: string },
+  needed: number,
+): Promise<number> {
+  console.log(`  [Met] Fetching paintings for ${artist.name}...`)
+  const objectIds = await fetchMetArtworksByArtist(artist.name, 80)
   let count = 0
 
-  for (const objectId of objectIds.slice(0, 5)) {
+  for (const objectId of objectIds) {
+    if (count >= needed) break
+
     const existing = await prisma.artwork.findFirst({
       where: { source: 'met', sourceId: String(objectId) },
     })
@@ -184,6 +251,10 @@ async function seedArtworksFromMet(artist: { id: number; name: string }) {
 
     const obj = await fetchMetObject(objectId)
     if (!obj || !obj.primaryImage) continue
+    // Only paintings
+    if (obj.objectName !== 'Painting') continue
+    // Verify the Met's own attribution matches the artist we're seeding
+    if (!metArtistMatches(obj, artist.name)) continue
 
     try {
       await prisma.artwork.create({
@@ -203,39 +274,50 @@ async function seedArtworksFromMet(artist: { id: number; name: string }) {
         },
       })
       count++
-    } catch (e) {
+    } catch {
       // skip
     }
+
+    await new Promise((r) => setTimeout(r, 100))
   }
 
-  console.log(`  Added ${count} Met artworks for ${artist.name}`)
+  console.log(`  [Met] Added ${count} paintings for ${artist.name}`)
   return count
 }
 
 async function main() {
-  console.log('Starting seed...')
+  const reseed = process.argv.includes('--reseed')
+  const metOnly = process.argv.includes('--met-only')
+  console.log(`Starting seed...${reseed ? ' (--reseed)' : ''}${metOnly ? ' (--met-only)' : ''}`)
+
+  if (reseed) {
+    const deleted = await prisma.artwork.deleteMany({})
+    console.log(`Cleared ${deleted.count} artworks from DB.`)
+  }
 
   for (const artistData of ARTISTS) {
     console.log(`\nProcessing: ${artistData.name}`)
     const artist = await seedArtist(artistData)
 
-    // Check if already has enough artworks
     const existing = await prisma.artwork.count({ where: { artistId: artist.id } })
-    if (existing >= 3) {
+    if (existing >= SKIP_THRESHOLD) {
       console.log(`  Already has ${existing} artworks, skipping`)
       continue
     }
 
-    await seedArtworksFromAIC(artist)
+    const needed = TARGET_PER_ARTIST - existing
 
-    // Small delay to be polite to APIs
-    await new Promise((r) => setTimeout(r, 300))
+    if (!metOnly) {
+      await seedPaintingsFromAIC(artist, needed)
+    }
 
     const afterAIC = await prisma.artwork.count({ where: { artistId: artist.id } })
-    if (afterAIC < 2) {
-      await seedArtworksFromMet(artist)
-      await new Promise((r) => setTimeout(r, 300))
+    const stillNeeded = TARGET_PER_ARTIST - afterAIC
+    if (stillNeeded > 0) {
+      await seedPaintingsFromMet(artist, stillNeeded)
     }
+
+    await new Promise((r) => setTimeout(r, 300))
   }
 
   const totalArtists = await prisma.artist.count()
