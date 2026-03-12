@@ -18,13 +18,14 @@ function getTitle(score: number, total: number): { title: string; subtitle: stri
   if (pct >= 3/6)   return { title: 'Dilettante',            subtitle: 'You\'ve been to a museum. Several, perhaps.' }
   if (pct >= 2/6)   return { title: 'Appreciator',           subtitle: 'Art moves you. It just doesn\'t tell you its name.' }
   if (pct >= 1/6)   return { title: 'Museumgoer',            subtitle: 'You\'ve walked past many of these paintings.' }
-  if (score === 1)   return { title: 'Gift Shop Enthusiast', subtitle: 'One right! The postcards are paying off.' }
+  if (score >= 0.5) return { title: 'Gift Shop Enthusiast',  subtitle: 'One right! The postcards are paying off.' }
   return              { title: 'IKEA Art Critic',             subtitle: 'A bold score. Very Björksta of you.' }
 }
 
 export default function QuizSummary({ answers, mode, onRestart }: Props) {
-  const score = answers.filter((a) => a.correct).length
+  const score = answers.reduce((sum, a) => sum + (a.correct ? (a.hinted ? 0.5 : 1) : 0), 0)
   const total = answers.length
+  const scoreDisplay = Number.isInteger(score) ? score : score.toFixed(1)
   const { title, subtitle } = getTitle(score, total)
 
   return (
@@ -32,7 +33,7 @@ export default function QuizSummary({ answers, mode, onRestart }: Props) {
       <div className="text-center space-y-3">
         <p className="text-xs tracking-[0.3em] uppercase text-stone-400">Results</p>
         <div className="text-6xl font-serif text-stone-800">
-          {score}<span className="text-stone-300 text-3xl">/{total}</span>
+          {scoreDisplay}<span className="text-stone-300 text-3xl">/{total}</span>
         </div>
         <p className="font-serif text-xl text-stone-700 tracking-wide">{title}</p>
         <p className="text-stone-400 text-sm italic">{subtitle}</p>
@@ -60,15 +61,24 @@ export default function QuizSummary({ answers, mode, onRestart }: Props) {
                 <p className="font-serif text-stone-800 leading-tight">
                   {answer.artwork.title}
                 </p>
-                <span
-                  className={`text-xs flex-shrink-0 px-2 py-0.5 rounded-full ${
-                    answer.correct
-                      ? 'bg-green-50 text-green-600'
-                      : 'bg-red-50 text-red-500'
-                  }`}
-                >
-                  {answer.correct ? '✓' : '✗'}
-                </span>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {answer.hinted && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                      hint
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      answer.correct && answer.hinted
+                        ? 'bg-amber-50 text-amber-600'
+                        : answer.correct
+                        ? 'bg-green-50 text-green-600'
+                        : 'bg-red-50 text-red-500'
+                    }`}
+                  >
+                    {answer.correct ? '✓' : '✗'}
+                  </span>
+                </div>
               </div>
               <p className="text-sm text-stone-600 font-serif">{answer.artwork.artistName}</p>
               {answer.artwork.year && (

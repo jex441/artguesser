@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
           dimensions: aw.dimensions,
           description: aw.description,
           museum: aw.museum,
+          nationality: aw.artist.nationality,
+          birthYear: aw.artist.birthYear,
         }
 
         if (mode === 'easy') {

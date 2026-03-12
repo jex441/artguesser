@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import type { QuizArtwork } from '@/types'
 
 interface ArtistResult {
   id: number
@@ -11,17 +12,33 @@ interface ArtistResult {
 }
 
 interface Props {
-  onGuess: (guess: string) => void
+  artwork: QuizArtwork
+  onGuess: (guess: string, hinted: boolean) => void
   onPass: () => void
 }
 
-export default function HardMode({ onGuess, onPass }: Props) {
+const MAX_HINTS = 3
+
+function getHints(artwork: QuizArtwork): string[] {
+  const hints: string[] = []
+  if (artwork.nationality) hints.push(artwork.nationality)
+  if (artwork.birthYear) hints.push(`b. ${artwork.birthYear}`)
+  const lastName = artwork.artistName.trim().split(' ').pop() ?? ''
+  if (lastName) hints.push(`Last name starts with "${lastName[0].toUpperCase()}"`)
+  return hints
+}
+
+export default function HardMode({ artwork, onGuess, onPass }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ArtistResult[]>([])
   const [selected, setSelected] = useState<ArtistResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [hintsRevealed, setHintsRevealed] = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const hints = getHints(artwork)
+  const canHint = hintsRevealed < Math.min(MAX_HINTS, hints.length)
 
   useEffect(() => {
     if (query.length < 2) {
@@ -51,7 +68,7 @@ export default function HardMode({ onGuess, onPass }: Props) {
 
   const handleSubmit = () => {
     if (!selected) return
-    onGuess(selected.name)
+    onGuess(selected.name, hintsRevealed > 0)
   }
 
   const handleClear = () => {
@@ -65,6 +82,19 @@ export default function HardMode({ onGuess, onPass }: Props) {
       <p className="text-center text-sm text-stone-400 tracking-wider uppercase">
         Name the artist
       </p>
+
+      {hintsRevealed > 0 && (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {hints.slice(0, hintsRevealed).map((hint, i) => (
+            <span
+              key={i}
+              className="text-xs px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-full tracking-wide"
+            >
+              {hint}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="relative">
         <div className="flex gap-2">
@@ -137,12 +167,28 @@ export default function HardMode({ onGuess, onPass }: Props) {
       >
         Submit
       </button>
-      <button
-        onClick={onPass}
-        className="w-full py-3 border border-stone-200 text-stone-400 rounded-sm font-serif text-sm tracking-wider hover:border-stone-400 hover:text-stone-600 transition-all duration-200"
-      >
-        Pass
-      </button>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setHintsRevealed((n) => Math.min(n + 1, hints.length))}
+          disabled={!canHint}
+          className={`
+            flex-1 py-3 border rounded-sm font-serif text-sm tracking-wider transition-all duration-200
+            ${canHint
+              ? 'border-amber-300 text-amber-700 hover:bg-amber-50 cursor-pointer'
+              : 'border-stone-100 text-stone-300 cursor-default'
+            }
+          `}
+        >
+          {hintsRevealed === 0 ? 'Hint' : hintsRevealed >= hints.length ? 'No more hints' : 'Another hint'}
+        </button>
+        <button
+          onClick={onPass}
+          className="flex-1 py-3 border border-stone-200 text-stone-400 rounded-sm font-serif text-sm tracking-wider hover:border-stone-400 hover:text-stone-600 transition-all duration-200"
+        >
+          Pass
+        </button>
+      </div>
     </div>
   )
 }
