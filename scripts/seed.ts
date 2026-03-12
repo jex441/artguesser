@@ -71,6 +71,38 @@ const ARTISTS: Array<{
   { name: 'Adriaen Brouwer', nationality: 'Flemish', birthYear: 1605, deathYear: 1638, difficulty: 4 },
   { name: 'Odd Nerdrum', nationality: 'Norwegian', birthYear: 1944, difficulty: 4 },
   { name: 'Balthus', nationality: 'French', birthYear: 1908, deathYear: 2001, difficulty: 4 },
+
+  // Dutch Golden Age
+  { name: 'Gerard ter Borch', nationality: 'Dutch', birthYear: 1617, deathYear: 1681, difficulty: 3 },
+  { name: 'Aelbert Cuyp', nationality: 'Dutch', birthYear: 1620, deathYear: 1691, difficulty: 3 },
+  { name: 'Adriaen van Ostade', nationality: 'Dutch', birthYear: 1610, deathYear: 1685, difficulty: 3 },
+  { name: 'Meindert Hobbema', nationality: 'Dutch', birthYear: 1638, deathYear: 1709, difficulty: 3 },
+  { name: 'Jan Steen', nationality: 'Dutch', birthYear: 1626, deathYear: 1679, difficulty: 3 },
+  { name: 'Frans van Mieris the Elder', nationality: 'Dutch', birthYear: 1635, deathYear: 1681, difficulty: 4 },
+
+  // French Academic & Realist
+  { name: 'Jean-Baptiste-Camille Corot', nationality: 'French', birthYear: 1796, deathYear: 1875, difficulty: 3 },
+  { name: 'Jean-Léon Gérôme', nationality: 'French', birthYear: 1824, deathYear: 1904, difficulty: 3 },
+  { name: 'William-Adolphe Bouguereau', nationality: 'French', birthYear: 1825, deathYear: 1905, difficulty: 3 },
+  { name: 'Thomas Couture', nationality: 'French', birthYear: 1815, deathYear: 1879, difficulty: 4 },
+  { name: 'Jean-Auguste-Dominique Ingres', nationality: 'French', birthYear: 1780, deathYear: 1867, difficulty: 3 },
+  { name: 'Carolus-Duran', nationality: 'French', birthYear: 1837, deathYear: 1917, difficulty: 4 },
+
+  // French Impressionists
+  { name: 'Alfred Sisley', nationality: 'French', birthYear: 1839, deathYear: 1899, difficulty: 3 },
+  { name: 'Camille Pissarro', nationality: 'French', birthYear: 1830, deathYear: 1903, difficulty: 3 },
+  { name: 'Gustave Caillebotte', nationality: 'French', birthYear: 1848, deathYear: 1894, difficulty: 3 },
+  { name: 'Berthe Morisot', nationality: 'French', birthYear: 1841, deathYear: 1895, difficulty: 3 },
+  { name: 'Mary Cassatt', nationality: 'American', birthYear: 1844, deathYear: 1926, difficulty: 2 },
+  { name: 'Armand Guillaumin', nationality: 'French', birthYear: 1841, deathYear: 1927, difficulty: 4 },
+
+  // American
+  { name: 'William Merritt Chase', nationality: 'American', birthYear: 1849, deathYear: 1916, difficulty: 3 },
+  { name: 'Eastman Johnson', nationality: 'American', birthYear: 1824, deathYear: 1906, difficulty: 3 },
+  { name: 'Thomas Eakins', nationality: 'American', birthYear: 1844, deathYear: 1916, difficulty: 3 },
+  { name: 'Winslow Homer', nationality: 'American', birthYear: 1836, deathYear: 1910, difficulty: 2 },
+  { name: 'John Singer Sargent', nationality: 'American', birthYear: 1856, deathYear: 1925, difficulty: 2 },
+  { name: 'Childe Hassam', nationality: 'American', birthYear: 1859, deathYear: 1935, difficulty: 3 },
 ]
 
 const TARGET_PER_ARTIST = 20
@@ -125,18 +157,33 @@ function aicImageUrl(imageId: string): string {
 }
 
 // ---- Met Museum ----
+async function fetchWithRetry(url: string, retries = 4, baseDelay = 2000): Promise<Response | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url)
+    if (res.ok) return res
+    if (res.status === 403 || res.status === 429) {
+      const delay = baseDelay * Math.pow(2, attempt)
+      console.log(`  [Met] HTTP ${res.status} — waiting ${delay / 1000}s before retry ${attempt + 1}/${retries}...`)
+      await new Promise((r) => setTimeout(r, delay))
+    } else {
+      return null // non-retryable error
+    }
+  }
+  return null
+}
+
 async function fetchMetArtworksByArtist(artistName: string, limit = 60): Promise<number[]> {
-  const url = `https://collectionapi.metmuseum.org/public/collection/v1/search?artistOrCulture=true&hasImages=true&q=${encodeURIComponent(artistName)}`
-  const res = await fetch(url)
-  if (!res.ok) return []
+  const url = `https://collectionapi.metmuseum.org/public/collection/v1/search?artistOrCulture=true&hasImages=true&isPublicDomain=true&q=${encodeURIComponent(artistName)}`
+  const res = await fetchWithRetry(url)
+  if (!res) return []
   const data = await res.json()
   return (data.objectIDs ?? []).slice(0, limit)
 }
 
 async function fetchMetObject(objectId: number): Promise<any> {
   const url = `https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectId}`
-  const res = await fetch(url)
-  if (!res.ok) return null
+  const res = await fetchWithRetry(url)
+  if (!res) return null
   return res.json()
 }
 
@@ -251,9 +298,7 @@ async function seedPaintingsFromMet(
 
     const obj = await fetchMetObject(objectId)
     if (!obj || !obj.primaryImage) continue
-    // Only paintings
     if (obj.objectName !== 'Painting') continue
-    // Verify the Met's own attribution matches the artist we're seeding
     if (!metArtistMatches(obj, artist.name)) continue
 
     try {
@@ -278,7 +323,7 @@ async function seedPaintingsFromMet(
       // skip
     }
 
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 500))
   }
 
   console.log(`  [Met] Added ${count} paintings for ${artist.name}`)

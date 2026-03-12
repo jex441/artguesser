@@ -47,10 +47,20 @@ export async function GET(req: NextRequest) {
         }
 
         if (mode === 'easy') {
-          // Get 3 wrong answers — prefer similar difficulty artists
-          const wrongArtists = await prisma.artist.findMany({
+          // Get 3 wrong answers — prefer artists from a similar era (±75 years)
+          // and similar difficulty, so choices are plausible
+          const ERA_RANGE = 75
+          const birthYear = aw.artist.birthYear
+
+          let wrongArtists = await prisma.artist.findMany({
             where: {
               id: { not: aw.artistId },
+              ...(birthYear != null && {
+                birthYear: {
+                  gte: birthYear - ERA_RANGE,
+                  lte: birthYear + ERA_RANGE,
+                },
+              }),
               difficulty: {
                 gte: Math.max(1, aw.artist.difficulty - 1),
                 lte: Math.min(4, aw.artist.difficulty + 1),
@@ -59,19 +69,29 @@ export async function GET(req: NextRequest) {
             select: { name: true },
           })
 
-          let wrongs: string[]
-          if (wrongArtists.length >= 3) {
-            wrongs = pickRandom(wrongArtists, 3).map((a) => a.name)
-          } else {
-            // fallback: any other artists
-            const fallback = await prisma.artist.findMany({
-              where: { id: { not: aw.artistId } },
+          // Widen era window if not enough candidates
+          if (wrongArtists.length < 3 && birthYear != null) {
+            wrongArtists = await prisma.artist.findMany({
+              where: {
+                id: { not: aw.artistId },
+                birthYear: {
+                  gte: birthYear - ERA_RANGE * 2,
+                  lte: birthYear + ERA_RANGE * 2,
+                },
+              },
               select: { name: true },
-              take: 20,
             })
-            wrongs = pickRandom(fallback, 3).map((a) => a.name)
           }
 
+          // Final fallback: any other artist
+          if (wrongArtists.length < 3) {
+            wrongArtists = await prisma.artist.findMany({
+              where: { id: { not: aw.artistId } },
+              select: { name: true },
+            })
+          }
+
+          const wrongs = pickRandom(wrongArtists, 3).map((a) => a.name)
           base.choices = shuffle([aw.artistName, ...wrongs])
         }
 
