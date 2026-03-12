@@ -11,14 +11,36 @@ interface Props {
 
 export default function ArtworkDisplay({ artwork, revealed }: Props) {
   const [loaded, setLoaded] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
 
   useEffect(() => {
     setLoaded(false)
+    setZoomed(false)
   }, [artwork.imageUrl])
 
   return (
     <div className="space-y-3">
-      <div className="relative w-full overflow-hidden rounded-sm border border-stone-100 bg-stone-50">
+      {/* Zoomed overlay */}
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center cursor-zoom-out"
+          onClick={() => setZoomed(false)}
+        >
+          <Image
+            src={artwork.imageUrl}
+            alt={revealed ? `${artwork.title} by ${artwork.artistName}` : 'Artwork'}
+            fill
+            className="object-contain p-4"
+            sizes="100vw"
+            priority
+          />
+        </div>
+      )}
+
+      <div
+        className="relative w-full overflow-hidden rounded-sm border border-stone-100 bg-stone-50 cursor-zoom-in"
+        onClick={() => loaded && setZoomed(true)}
+      >
         <div className="relative w-full" style={{ paddingBottom: '66%' }}>
           {!loaded && (
             <div className="absolute inset-0 flex items-center justify-center">
