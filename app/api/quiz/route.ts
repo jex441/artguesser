@@ -4,7 +4,16 @@ import { shuffle, pickRandom } from '@/lib/utils'
 import type { QuizArtwork } from '@/types'
 
 const QUIZ_SIZE = 7
+const SPARE_SIZE = 4 // extra artworks sent along so the client can swap out any that fail to load
 const CHOICES_COUNT = 4
+
+// Sources whose images are currently unreachable and shouldn't be served.
+// "aic" (Art Institute of Chicago): as of 2026-09, artic.edu put its IIIF
+// image endpoint behind Cloudflare bot-challenge, which returns a 403 HTML
+// page instead of the image for any non-interactive request — so every
+// artwork from this source is permanently broken until that changes or
+// they're re-seeded from a different image source. Data is left in the DB.
+const EXCLUDED_SOURCES = ['aic']
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get('mode') as 'easy' | 'hard'
@@ -13,7 +22,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const totalArtworks = await prisma.artwork.count()
+    const availableFilter = { source: { notIn: EXCLUDED_SOURCES } }
+    const totalArtworks = await prisma.artwork.count({ where: availableFilter })
     if (totalArtworks < QUIZ_SIZE) {
       return NextResponse.json(
         { error: 'Not enough artworks in database. Run the seed script first.' },
@@ -21,9 +31,9 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Pick random artworks by selecting random IDs
-    const allIds = await prisma.artwork.findMany({ select: { id: true } })
-    const selectedIds = pickRandom(allIds, QUIZ_SIZE).map((r) => r.id)
+    // Pick random artworks by selecting random IDs (a few spares included)
+    const allIds = await prisma.artwork.findMany({ where: availableFilter, select: { id: true } })
+    const selectedIds = pickRandom(allIds, Math.min(QUIZ_SIZE + SPARE_SIZE, allIds.length)).map((r) => r.id)
 
     const artworks = await prisma.artwork.findMany({
       where: { id: { in: selectedIds } },
@@ -101,7 +111,11 @@ export async function GET(req: NextRequest) {
       })
     )
 
-    return NextResponse.json({ artworks: quizArtworks, mode })
+    return NextResponse.json({
+      artworks: quizArtworks.slice(0, QUIZ_SIZE),
+      spares: quizArtworks.slice(QUIZ_SIZE),
+      mode,
+    })
   } catch (err) {
     console.error('Quiz route error:', err)
     return NextResponse.json({ error: 'Failed to generate quiz' }, { status: 500 })

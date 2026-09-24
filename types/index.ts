@@ -33,6 +33,7 @@ export interface QuizArtwork extends Artwork {
 export interface QuizState {
   mode: Mode
   artworks: QuizArtwork[]
+  spares: QuizArtwork[] // backups swapped in when an artwork's image fails to load
   currentIndex: number
   answers: AnswerResult[]
   phase: 'question' | 'feedback' | 'summary'

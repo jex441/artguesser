@@ -39,11 +39,13 @@ export default function QuizGame({ mode }: Props) {
       setState({
         mode,
         artworks: data.artworks,
+        spares: data.spares ?? [],
         currentIndex: 0,
         answers: [],
         phase: 'question',
       })
       preloadImages(data.artworks)
+      preloadImages(data.spares ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -76,6 +78,28 @@ export default function QuizGame({ mode }: Props) {
       prev ? { ...prev, answers: [...prev.answers, result], phase: 'feedback' } : prev
     )
   }, [state])
+
+  // An artwork's image failed to load (after retry). Swap in a spare so the
+  // quiz keeps moving instead of hanging on a dead image; if no spares are
+  // left, drop this question from the quiz entirely.
+  const handleImageLoadFailed = useCallback(() => {
+    setState((prev) => {
+      if (!prev || prev.phase !== 'question') return prev
+      const [next, ...restSpares] = prev.spares
+      if (next) {
+        const artworks = [...prev.artworks]
+        artworks[prev.currentIndex] = next
+        return { ...prev, artworks, spares: restSpares }
+      }
+      // Drop the broken question; the next unanswered one shifts into this slot.
+      // If it was the last question, there's nothing left to shift in — finish up.
+      const artworks = prev.artworks.filter((_, i) => i !== prev.currentIndex)
+      if (prev.currentIndex >= artworks.length) {
+        return { ...prev, artworks, phase: 'summary' }
+      }
+      return { ...prev, artworks }
+    })
+  }, [])
 
   const handleNext = useCallback(() => {
     if (!state) return
@@ -130,7 +154,11 @@ export default function QuizGame({ mode }: Props) {
         answers={state.answers}
       />
 
-      <ArtworkDisplay artwork={currentArtwork} revealed={state.phase === 'feedback'} />
+      <ArtworkDisplay
+        artwork={currentArtwork}
+        revealed={state.phase === 'feedback'}
+        onLoadFailed={handleImageLoadFailed}
+      />
 
       {state.phase === 'question' && (
         <div className="animate-slide-up">
